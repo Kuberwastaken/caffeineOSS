@@ -1,0 +1,10 @@
+# build output
+CaffeineOSS.app/
+*.dSYM/
+
+# macOS cruft
+.DS_Store
+
+# logs
+/tmp/caffeineoss.*.log
+*.log

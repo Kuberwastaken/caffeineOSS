@@ -1,0 +1,60 @@
+<svg width="1280" height="360" viewBox="0 0 1280 360" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="CaffeineOSS — caffeinate your mac">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1280" y2="360" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#1b1207"/>
+      <stop offset="0.55" stop-color="#2c1c0d"/>
+      <stop offset="1" stop-color="#3b2410"/>
+    </linearGradient>
+    <linearGradient id="cupGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffe7c2"/>
+      <stop offset="1" stop-color="#e9b878"/>
+    </linearGradient>
+    <linearGradient id="title" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffd9a0"/>
+      <stop offset="1" stop-color="#ff9f43"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#ff9f43" stop-opacity="0.35"/>
+      <stop offset="1" stop-color="#ff9f43" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="soft" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3"/>
+    </filter>
+  </defs>
+
+  <!-- backdrop -->
+  <rect width="1280" height="360" rx="24" fill="url(#bg)"/>
+  <ellipse cx="250" cy="180" rx="280" ry="200" fill="url(#glow)"/>
+
+  <!-- coffee beans scatter -->
+  <g fill="#7a4a1d" opacity="0.5">
+    <ellipse cx="980" cy="70" rx="13" ry="9" transform="rotate(30 980 70)"/>
+    <ellipse cx="1080" cy="120" rx="13" ry="9" transform="rotate(-15 1080 120)"/>
+    <ellipse cx="1160" cy="250" rx="13" ry="9" transform="rotate(40 1160 250)"/>
+    <ellipse cx="1040" cy="290" rx="13" ry="9" transform="rotate(-25 1040 290)"/>
+  </g>
+
+  <!-- steam -->
+  <g stroke="#ffe7c2" stroke-width="7" stroke-linecap="round" fill="none" opacity="0.55" filter="url(#soft)">
+    <path d="M215 96 q18 -24 0 -48 q-18 -24 0 -48">
+      <animate attributeName="opacity" values="0.15;0.6;0.15" dur="3s" repeatCount="indefinite"/>
+    </path>
+    <path d="M255 96 q18 -24 0 -48 q-18 -24 0 -48">
+      <animate attributeName="opacity" values="0.5;0.15;0.5" dur="3.4s" repeatCount="indefinite"/>
+    </path>
+  </g>
+
+  <!-- coffee cup -->
+  <g transform="translate(150 110)">
+    <path d="M20 20 h150 v70 a55 55 0 0 1 -55 55 h-40 a55 55 0 0 1 -55 -55 z" fill="url(#cupGrad)"/>
+    <path d="M170 40 h22 a34 34 0 0 1 0 68 h-22" fill="none" stroke="url(#cupGrad)" stroke-width="16"/>
+    <ellipse cx="95" cy="22" rx="75" ry="15" fill="#3b2410"/>
+    <ellipse cx="95" cy="20" rx="75" ry="15" fill="#5a3417"/>
+    <rect x="20" y="158" width="160" height="14" rx="7" fill="url(#cupGrad)"/>
+  </g>
+
+  <!-- wordmark -->
+  <text x="430" y="170" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="84" font-weight="800" fill="url(#title)">CaffeineOSS</text>
+  <text x="434" y="225" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="34" font-weight="500" fill="#e8c79a">caffeinate your mac ☕</text>
+  <text x="434" y="278" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="20" fill="#a87c4f">// ~120 lines of Swift · zero dependencies · no kexts</text>
+</svg>
