@@ -1,12 +1,22 @@
 import Cocoa
-import IOKit.pwr_mgt
 
-// A tiny menu-bar "keep awake" app. Same mechanism as /usr/bin/caffeinate:
-// it creates an IOKit power assertion that prevents idle system/display sleep.
+// A tiny menu-bar "keep awake" app.
+//
+// When active it does exactly what you'd type by hand:
+//   caffeinate -dimsu          → prevent display / idle / disk / system sleep + keep "user active"
+//   sudo pmset -a disablesleep 1  → also stop the forced sleep that happens when you CLOSE THE LID
+//
+// The plain IOKit assertion (what the old version did, == `caffeinate -d`) keeps the screen on
+// while the lid is open, but the Mac still sleeps the instant you shut the lid. `disablesleep`
+// is the only thing that defeats that — and it needs root, so we ask for admin once per toggle.
+//
+// Everything is undone when you toggle off, when a timer expires, or when you quit, so the
+// laptop can sleep normally again the moment you're done. ☕
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private var statusItem: NSStatusItem!
-    private var assertionID: IOPMAssertionID = 0
+    private var caffeinate: Process?       // the live `caffeinate -dimsu` child
     private var active = false
+    private var sleepDisabled = false      // did we successfully run `pmset disablesleep 1`?
     private var autoOffTimer: Timer?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
@@ -21,11 +31,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         addDuration(to: menu, "Awake for 2 hours", 2 * 60 * 60)
         addDuration(to: menu, "Awake for 5 hours", 5 * 60 * 60)
         menu.addItem(.separator())
-        menu.addItem(withTitle: "Quit", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q")
+        menu.addItem(withTitle: "Quit", action: #selector(quit), keyEquivalent: "q")
         statusItem.menu = menu
+    }
 
-        // Left-click the icon to toggle quickly (when no modifier menu is needed),
-        // right-click / click shows the menu above.
+    // Make sure we never leave the machine unable to sleep if we're killed/quit.
+    func applicationWillTerminate(_ notification: Notification) {
+        stopAssertion()
     }
 
     private func addDuration(to menu: NSMenu, _ title: String, _ seconds: TimeInterval) {
@@ -45,30 +57,68 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func toggle() {
-        autoOffTimer?.invalidate()
         active ? stopAssertion() : startAssertion()
     }
 
+    @objc private func quit() {
+        stopAssertion()
+        NSApplication.shared.terminate(nil)
+    }
+
     private func startAssertion() {
-        let reason = "CaffeineOSS keeping the Mac awake" as CFString
-        let result = IOPMAssertionCreateWithName(
-            kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
-            IOPMAssertionLevel(kIOPMAssertionLevelOn),
-            reason,
-            &assertionID
-        )
-        active = (result == kIOReturnSuccess)
+        // 1) Hold the full set of sleep assertions via Apple's own tool, kept alive as a child
+        //    process for as long as we're active (no timeout, no utility → runs until we kill it).
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/caffeinate")
+        p.arguments = ["-dimsu"]
+        do {
+            try p.run()
+            caffeinate = p
+        } catch {
+            caffeinate = nil
+        }
+
+        // 2) Defeat lid-close (clamshell) sleep. Needs root → one admin prompt.
+        sleepDisabled = setDisableSleep(true)
+
+        active = caffeinate != nil || sleepDisabled
         updateIcon()
     }
 
     private func stopAssertion() {
-        if assertionID != 0 {
-            IOPMAssertionRelease(assertionID)
-            assertionID = 0
-        }
-        active = false
         autoOffTimer?.invalidate()
+        autoOffTimer = nil
+
+        if let p = caffeinate, p.isRunning {
+            p.terminate()
+        }
+        caffeinate = nil
+
+        if sleepDisabled {
+            _ = setDisableSleep(false)
+            sleepDisabled = false
+        }
+
+        active = false
         updateIcon()
+    }
+
+    /// Runs `pmset -a disablesleep <0|1>` as root via a native admin prompt.
+    /// Returns true on success (false if the user cancelled or it failed).
+    @discardableResult
+    private func setDisableSleep(_ on: Bool) -> Bool {
+        let value = on ? "1" : "0"
+        let script = "do shell script \"/usr/bin/pmset -a disablesleep \(value)\" with administrator privileges"
+        let p = Process()
+        p.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        p.arguments = ["-e", script]
+        do {
+            try p.run()
+            p.waitUntilExit()
+            return p.terminationStatus == 0
+        } catch {
+            return false
+        }
     }
 
     private func updateIcon() {
@@ -77,7 +127,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         let img = NSImage(systemSymbolName: name, accessibilityDescription: "Keep awake")
         img?.isTemplate = true
         statusItem.button?.image = img
-        statusItem.button?.toolTip = active ? "Awake — click to allow sleep" : "Asleep allowed — click to keep awake"
+
+        if !active {
+            statusItem.button?.toolTip = "Sleep allowed — click to keep awake"
+        } else if sleepDisabled {
+            statusItem.button?.toolTip = "Awake (lid-close sleep off) — click to allow sleep"
+        } else {
+            statusItem.button?.toolTip = "Awake (lid open only) — click to allow sleep"
+        }
     }
 }
 

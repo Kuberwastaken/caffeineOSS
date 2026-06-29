@@ -30,21 +30,23 @@ At that point it was personal. Downloaded apps get a quarantine flag and have to
 
 ## What it actually does
 
-Under the hood it's the same trick Apple's own `/usr/bin/caffeinate` uses — a single public IOKit call:
+When you flip it on, CaffeineOSS does exactly what you'd type by hand — nothing exotic, just Apple's own tools:
 
-```swift
-IOPMAssertionCreateWithName(
-    kIOPMAssertionTypePreventUserIdleDisplaySleep as CFString,
-    IOPMAssertionLevel(kIOPMAssertionLevelOn),
-    "CaffeineOSS keeping the Mac awake" as CFString,
-    &assertionID
-)
+```bash
+caffeinate -dimsu              # prevent display / idle / disk / system sleep + keep "user active"
+sudo pmset -a disablesleep 1   # also stop the forced sleep that happens when you CLOSE THE LID
 ```
 
-That's it. It asks the OS power manager to **prevent user-idle display/system sleep** while active, and releases the assertion when you toggle off. No kernel extensions, no private APIs, no special entitlements, no daemons phoning home.
+- It launches `caffeinate -dimsu` as a child process and keeps it alive for as long as you're awake.
+- It flips `pmset disablesleep` so the Mac **stays awake even with the lid shut** (great for leaving `claude` running overnight). That part needs root, so you get **one native admin prompt per toggle**.
+
+Everything is undone the moment you toggle off, when a timer expires, or when you quit — so the laptop sleeps normally again the second you're done.
+
+> [!NOTE]
+> The first cut of this app only held a single `PreventUserIdleDisplaySleep` IOKit assertion (== `caffeinate -d`). That keeps the screen on while the lid is **open**, but the Mac still sleeps the instant you close the lid. `disablesleep` is the only thing that defeats clamshell sleep — which is why the lid-closed case now works.
 
 - 🟤 **Outline cup** = sleep allowed (normal)
-- ☕ **Filled cup** = staying awake
+- ☕ **Filled cup** = staying awake (lid open *and* closed)
 - ⏱ **Timed modes** — awake for 30 min / 1 h / 2 h / 5 h, then auto-off
 - 🪶 **Featherweight** — one Swift file, zero dependencies, no Dock icon (menu-bar only)
 
